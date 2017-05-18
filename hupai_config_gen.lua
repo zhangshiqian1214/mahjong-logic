@@ -313,14 +313,68 @@ function HupaiGen:GenWeaveEyeBase()
 	for key, _ in pairs(self.config.weave_base) do
 		local t = key2IndexMap(key)
 		if #t < 9 then
-			local tmp = clone()
+			local tmp = clone(t)
+			table.insert(tmp, 1, 2)
+			addWeave(tmp)
+
+			tmp = clone(t)
+			table.insert(tmp, 2)
+			addWeave(tmp)
+		end
+
+		for i, v in pairs(t) do
+			if v <= 2 then
+				local tmp = clone(t)
+				tmp[i] = v + 2
+				addWeave(tmp)
+			end
 		end
 	end
 end
 
 --生成不带鬼的牌
 function HupaiGen:GenWeave0Gui()
+	local testedKeyMap = {}
+	local function addWeave(indexMap)
 
+	end
+
+	local function parseIndexMap(indexMap)
+		local count = 0
+		for i=1, 9 do
+			count = count + indexMap[i]
+		end
+
+		local eye = false
+		if count % 3 ~= 0 then
+			eye = true
+		end
+
+		if not eye then
+			addWeave(indexMap)
+		else
+			
+		end
+	end
+
+	local function checkHuPai(indexMap)
+		for i=1, 34 do
+			if indexMap[i] > 4 then
+				return
+			end
+		end
+		local key = 0
+		for i=1, 18 do
+			key = key * 10 + indexMap[i]
+		end
+		if testedKeyMap[key] then
+			return
+		end
+		testedKeyMap[key] = true
+		if self:CanHuPai(indexMap) then
+
+		end
+	end
 end
 
 --生成不带鬼带眼的牌
@@ -348,19 +402,18 @@ print(huPaiGen:CanHuPai(indexMap))
 
 
 
-huPaiGen:GenWeaveConfig()
+huPaiGen:GenHuPaiConfig()
 local count = 0
 for _, v in pairs(huPaiGen.config.weave_base) do
 	count = count + 1
 end
 print("count=", count)
 
-local autoTable = require "auto_table"
-for k, v in pairs(autoTable) do
-	if not huPaiGen.config.weave_base[k] then
-		print("test failed k=", k)
-	end
+local eyeCount = 0
+for _, v in pairs(huPaiGen.config.weave_eye_base) do
+    eyeCount = eyeCount + 1
 end
+print("eyeCount=", eyeCount)
 
 
 return HupaiGen
