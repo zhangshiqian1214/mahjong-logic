@@ -11,21 +11,23 @@ CARD_COLOR = {
 local HupaiGen = class()
 function HupaiGen:_init()
 	--基础的刻子表
-	self._weave_config       = {}
-	self._weave_eye_config   = {}
+	self.config = {}
+	self.config.weave_base     = {}
+	self.config.weave_eye_base = {}
 
 	--鬼表
-	self._no_gui_config      = {}
-	self._one_gui_config     = {}
-	self._two_gui_config     = {}
-	self._three_gui_config   = {}
-	self._four_gui_config    = {}
+	self.config.weave_0_gui = {} --无鬼
+	self.config.weave_1_gui = {} --一鬼
+	self.config.weave_2_gui = {} --二鬼
+	self.config.weave_3_gui = {} --三鬼
+	self.config.weave_4_gui = {} --四鬼
 
 	--带将的鬼表
-	self._no_gui_eye_config   = {}
-	self._one_gui_eye_config  = {}
-	self._two_gui_eye_config  = {}
-	self._four_gui_eye_config = {} 
+	self.config.weave_0_gui_eye = {} --带眼牌无鬼
+	self.config.weave_1_gui_eye = {} --带眼牌一鬼
+	self.config.weave_2_gui_eye = {} --带眼牌二鬼
+	self.config.weave_3_gui_eye = {} --带眼牌三鬼
+	self.config.weave_4_gui_eye = {} --带眼牌四鬼
 end
 
 function HupaiGen:IsChiColor(color)
@@ -53,10 +55,11 @@ function HupaiGen:CanHuPai(indexMap)
 	}
 	for _, color in pairs(CARD_COLOR) do
 		local config = self:GetColorConfig(color)
-		--检查字牌花色
+		--检查万筒条
 		if config.chi and not self:CheckNumColor(tmpIndexMap, config, firstInfo) then
 			return false
-		elseif not config.chi and not self:CheckZiColor(tmpIndexMap, config, info) then
+		--检查字牌
+		elseif not config.chi and not self:CheckZiColor(tmpIndexMap, config, firstInfo) then
 			return false
 		end
 	end
@@ -90,10 +93,13 @@ function HupaiGen:CheckNumColor(indexMap, config, info)
 			local count = indexMap[i]
 			if count > 0 then
 				table.insert(countList, count)
-			else
+			end
+			
+			if count == 0 or i == config.max then
 				if #countList == 0 then
 					break
 				end
+				
 				if not self:CheckSub(countList, info) then
 					return false
 				end
@@ -122,7 +128,7 @@ function HupaiGen:CheckSub(countList, info)
 	return self:CheckWeave(countList)
 end
 
-function HupaiGen:CalcWeaveKey(countList)
+function HupaiGen:CalcCountListKey(countList)
 	local key = 0
 	for _, c in pairs(countList) do
 		key = key * 10 + c
@@ -131,12 +137,13 @@ function HupaiGen:CalcWeaveKey(countList)
 end
 
 function HupaiGen:CheckWeave(countList)
-	local key = self:CalcWeaveKey(countList)
-	if self._weave_config[key] then
+	local key = self:CalcCountListKey(countList)
+	if self.config.weave_base[key] then
 		return true
 	end
-	--self._weave_config[key] = true
-	return false
+
+	self.config.weave_base[key] = 1
+	return true
 end
 
 function HupaiGen:CheckWeaveWithEye(countList)
@@ -144,8 +151,8 @@ function HupaiGen:CheckWeaveWithEye(countList)
 		return true
 	end
 
-	local key = self:CalcWeaveKey(countList)
-	if self._weave_eye_config[key] then
+	local key = self:CalcCountListKey(countList)
+	if self.config.weave_eye_base[key] then
 		return true
 	end
 
@@ -193,19 +200,168 @@ function HupaiGen:CheckWeaveWithEye(countList)
 	return false
 end
 
-function HupaiGen:GenHuPaiConfig()
+--生成基础的组合配置
+function HupaiGen:GenWeaveBase()
+	local testedKeyMap = {}
+	
+	local function calcIndexMapKey(indexMap)
+		local key = 0
+		for i=1, 9 do
+			key = key * 10 + indexMap[i]
+		end
+		return key
+	end
+
+	local function checkHuPai(indexMap)
+		for i=1, 18 do
+			if indexMap[i] > 4 then
+				return
+			end
+		end
+
+		local key = calcIndexMapKey(indexMap)
+		if testedKeyMap[key] then
+			return
+		end
+		testedKeyMap[key] = true
+		if not self:CanHuPai(indexMap) then
+			print("测试失败")
+		end
+	end
+	
+	local function checkHuPaiSub(indexMap, num)
+		for i=1, 32 do
+			local index = nil
+			if i <= 18 then
+				indexMap[i] = indexMap[i] + 3
+			elseif i <= 25 then
+				index = i - 18
+			else
+				index = i - 16
+			end
+			if index then
+				indexMap[index] = indexMap[index] + 1
+				indexMap[index+1] = indexMap[index+1] + 1
+				indexMap[index+2] = indexMap[index+2] +1
+			end
+
+			if num == 4 then
+				checkHuPai(indexMap)
+			else
+				checkHuPaiSub(indexMap, num+1)
+			end
+
+			if i <= 18 then
+				indexMap[i] = indexMap[i] - 3
+			else
+				indexMap[index] = indexMap[index] - 1
+				indexMap[index+1] = indexMap[index+1] - 1
+				indexMap[index+2] = indexMap[index+2] -1
+			end
+		end
+	end
+
+	local tmp = {
+		0,0,0, 0,0,0, 0,0,0, --万
+        0,0,0, 0,0,0, 0,0,0, --筒
+        0,0,0, 0,0,0, 0,0,0, --条
+        0,0,0, 0,0,0, 0,0,0, --东南西北中发白
+        0,0,0, 0,0,0, 0,0,   --春夏秋冬梅兰竹菊
+	}
+	checkHuPaiSub(tmp, 1)
+end
+
+--生成带眼牌的组合配置
+function HupaiGen:GenWeaveEyeBase()
+
+	local function clone(object)
+		local lookup_table = {}
+	    local function _copy(object)
+	        if type(object) ~= "table" then
+	            return object
+	        elseif lookup_table[object] then
+	            return lookup_table[object]
+	        end
+	        local new_table = {}
+	        lookup_table[object] = new_table
+	        for key, value in pairs(object) do
+	            new_table[_copy(key)] = _copy(value)
+	        end
+	        return setmetatable(new_table, getmetatable(object))
+	    end
+	    return _copy(object)
+	end
+
+	local function addWeave(indexMap)
+		local key = 0
+		for i,v in pairs(indexMap) do
+			key = key * 10 + v
+		end
+		self.config.weave_eye_base[key] = 1
+	end
+
+	local function key2IndexMap(key)
+		local t = {}
+		while key > 0 do
+			local remainder = key % 10
+			key = math.floor(key / 10)
+			table.insert(t, 1, remainder)
+		end
+		return t
+	end
+
+	for key, _ in pairs(self.config.weave_base) do
+		local t = key2IndexMap(key)
+		if #t < 9 then
+			local tmp = clone()
+		end
+	end
+end
+
+--生成不带鬼的牌
+function HupaiGen:GenWeave0Gui()
+
+end
+
+--生成不带鬼带眼的牌
+function HupaiGen:GenWeave0GuiEye()
+
+end
+
+--生成胡牌配置
+function HupaiGen:GenHuPaiConfig(filename)
+	self:GenWeaveBase()
+	self:GenWeaveEyeBase()
+	
 
 end
 
 local huPaiGen = HupaiGen()
 local indexMap = {
-    1,1,4,1,1,1,0,0,0,
+    1,1,1,1,4,1,0,0,1,
     0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0,0,
   }
 print(huPaiGen:CanHuPai(indexMap))
+
+
+
+huPaiGen:GenWeaveConfig()
+local count = 0
+for _, v in pairs(huPaiGen.config.weave_base) do
+	count = count + 1
+end
+print("count=", count)
+
+local autoTable = require "auto_table"
+for k, v in pairs(autoTable) do
+	if not huPaiGen.config.weave_base[k] then
+		print("test failed k=", k)
+	end
+end
+
 
 return HupaiGen
 

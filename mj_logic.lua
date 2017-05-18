@@ -1,5 +1,5 @@
-local class = require "class"
-local huPaiConfig = require "hupai_config"
+local class    = require "class"
+local configDb = require "config_db"
 
 MASK_VALUE = 0x0F
 MASK_COLOR = 0xF0
@@ -22,8 +22,8 @@ CARD_COLOR = {
 
 
 local MjLogic = class()
-function MjLogic:_init()
-
+function MjLogic:_init(configName)
+	self._hupai_config = require(configName) -- configDb[configName]
 end
 
 function MjLogic:GetCardColor(card)
@@ -99,6 +99,30 @@ end
 
 function MjLogic:CanRightChi(indexMap, index)
 	return self:_canChi(indexMap, index-2, index-1)
+end
+
+--能否胡牌
+function MjLogic:CanHuPai(indexMap, guiIndex)
+	local tmpIndexMap = {
+		0,0,0, 0,0,0, 0,0,0, --万
+        0,0,0, 0,0,0, 0,0,0, --筒
+        0,0,0, 0,0,0, 0,0,0, --条
+        0,0,0, 0,0,0, 0,0,0, --东南西北中发白
+        0,0,0, 0,0,0, 0,0,   --春夏秋冬梅兰竹菊
+	}
+
+	for i, v in pairs(indexMap) do
+		tmpIndexMap[i] = v
+	end
+	local guiNum = tmpIndexMap[guiIndex]
+	tmpIndexMap[guiIndex] = 0
+
+	local splitedIndexMap = self:splitIndexMap(tmpIndexMap, guiIndex)
+	if not splitIndexMap then
+		return false
+	end
+
+	return self:check
 end
 
 return MjLogic
