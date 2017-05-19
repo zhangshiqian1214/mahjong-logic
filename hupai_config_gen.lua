@@ -15,19 +15,34 @@ function HupaiGen:_init()
 	self.config.weave_base     = {}
 	self.config.weave_eye_base = {}
 
-	--鬼表
-	self.config.weave_0_gui = {} --无鬼
-	self.config.weave_1_gui = {} --一鬼
-	self.config.weave_2_gui = {} --二鬼
-	self.config.weave_3_gui = {} --三鬼
-	self.config.weave_4_gui = {} --四鬼
+	--万筒条的鬼表
+	self.config.weave_0_gui          = {} --无鬼
+	self.config.weave_1_gui          = {} --一鬼
+	self.config.weave_2_gui          = {} --二鬼
+	self.config.weave_3_gui          = {} --三鬼
+	self.config.weave_4_gui          = {} --四鬼
 
-	--带将的鬼表
-	self.config.weave_0_gui_eye = {} --带眼牌无鬼
-	self.config.weave_1_gui_eye = {} --带眼牌一鬼
-	self.config.weave_2_gui_eye = {} --带眼牌二鬼
-	self.config.weave_3_gui_eye = {} --带眼牌三鬼
-	self.config.weave_4_gui_eye = {} --带眼牌四鬼
+	--带将的万筒条鬼表
+	self.config.weave_0_gui_eye      = {} --带眼牌无鬼
+	self.config.weave_1_gui_eye      = {} --带眼牌一鬼
+	self.config.weave_2_gui_eye      = {} --带眼牌二鬼
+	self.config.weave_3_gui_eye      = {} --带眼牌三鬼
+	self.config.weave_4_gui_eye      = {} --带眼牌四鬼
+
+	--风字牌的鬼表
+	self.config.weave_0_gui_feng     = {} --不带鬼的风牌
+	self.config.weave_1_gui_feng     = {} --带一鬼的风牌
+	self.config.weave_2_gui_feng     = {} --带二鬼的风牌
+	self.config.weave_3_gui_feng     = {} --带三鬼的风牌
+	self.config.weave_4_gui_feng     = {} --带四鬼的风牌
+
+	--风字牌的鬼眼表
+	self.config.weave_0_gui_feng_eye = {} --不带鬼的风牌
+	self.config.weave_1_gui_feng_eye = {} --带一鬼的风牌
+	self.config.weave_2_gui_feng_eye = {} --带二鬼的风牌
+	self.config.weave_3_gui_feng_eye = {} --带三鬼的风牌
+	self.config.weave_4_gui_feng_eye = {} --带四鬼的风牌
+
 end
 
 function HupaiGen:IsChiColor(color)

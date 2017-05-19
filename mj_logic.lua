@@ -1,5 +1,6 @@
 local class    = require "class"
 local configDb = require "config_db"
+-- require "utils"
 
 MASK_VALUE = 0x0F
 MASK_COLOR = 0xF0
@@ -20,6 +21,13 @@ CARD_COLOR = {
 	HUA  = 4,
 }
 
+CARD_COLOR_SPLIT = {
+	[CARD_COLOR.WAN]  = {min = 1,  max = 9,  chi = true },
+	[CARD_COLOR.TONG] = {min = 10, max = 18, chi = true },
+	[CARD_COLOR.TIAO] = {min = 19, max = 27, chi = true },
+	[CARD_COLOR.ZI]   = {min = 28, max = 34, chi = false},
+	[CARD_COLOR.HUA]  = {min = 37, max = 44, chi = false},
+}
 
 local MjLogic = class()
 function MjLogic:_init(configName)
@@ -52,6 +60,13 @@ end
 
 function MjLogic:IsChiColor(color)
 	return color < CARD_COLOR.ZI
+end
+
+function MjLogic:GetColorConfig(color)
+	if color <= 3 then
+		return CARD_COLOR_SPLIT[color]
+	end
+	return nil
 end
 
 function MjLogic:CanPeng(indexMap, index)
@@ -114,15 +129,146 @@ function MjLogic:CanHuPai(indexMap, guiIndex)
 	for i, v in pairs(indexMap) do
 		tmpIndexMap[i] = v
 	end
-	local guiNum = tmpIndexMap[guiIndex]
-	tmpIndexMap[guiIndex] = 0
-
-	local splitedIndexMap = self:splitIndexMap(tmpIndexMap, guiIndex)
-	if not splitIndexMap then
-		return false
+	local guiNum = 0
+	if guiIndex then
+		guiNum = tmpIndexMap[guiIndex]
+		tmpIndexMap[guiIndex] = 0
 	end
 
-	return self:check
+	--按花色切分
+	local splitedResult = self:splitIndexMap(tmpIndexMap, guiNum)
+	if not splitedResult then
+		return false
+	end
+	
+	--切分的结果效验
+	return self:CheckProbability(splitedResult, guiNum)
+end
+
+--分割手牌
+function MjLogic:splitIndexMap(indexMap, guiNum)
+	local ret = {}
+	for _, color in pairs(CARD_COLOR) do
+		local config = self:GetColorConfig(color)
+		repeat
+			if not config then break end
+			local key = 0
+			local num = 0
+			for i=config.min, config.max do
+				key = key * 10 + indexMap[i]
+				num = num + indexMap[i]
+			end
+			if num > 0 then
+				local list = self:ListProbability(guiNum, num, key, config.chi)
+				if #list == 0 then
+					return false
+				end
+				table.insert(ret, list)
+			end
+		until(true)
+	end
+	return ret
+end
+
+--列出所有可能组合
+function MjLogic:ListProbability(guiNum, cardNum, key, chi)
+	local list = {}
+	for i=0, guiNum do
+		local remainder = (cardNum + i) % 3
+		if remainder == 0 then
+			if self:CompareConfigWithKey(key, i, false, chi) then
+				table.insert(list, {eye = false, guiNum=i})
+			end
+		elseif remainder == 2 then
+			if self:CompareConfigWithKey(key, i, true) then
+				table.insert(list, {eye = true, guiNum=i})
+			end
+		end
+	end
+	return list
+end
+
+--对比配置表与手牌生成的key
+function MjLogic:CompareConfigWithKey(key, guiNum, eye, chi)
+	local config
+	if chi then
+		if eye then 
+			config = self._hupai_config["check_eye_table"][guiNum]
+		else
+			config = self._hupai_config["check_table"][guiNum]
+		end
+	else
+		if eye then	
+			config = self._hupai_config["check_feng_eye_table"][guiNum]
+		else
+			config = self._hupai_config["check_feng_table"][guiNum]
+		end
+	end
+
+	if config then
+		return config[key]
+	end
+	return nil
+end
+
+--效验按花色切分出来的结果
+function MjLogic:CheckProbability(splitedResult, guiNum)
+	local count = #splitedResult
+	--全是鬼牌
+	if count == 0 then
+		return true
+	end
+
+	if count == 1 then
+		return true
+	end
+
+	for i, v in pairs(splitedResult[1]) do
+		local info = {
+			eye = v.eye,
+			guiNum = guiNum - v.guiNum,
+			count = count,
+		}
+		local ret = self:CheckProbabilitySub(splitedResult, info, 2)
+		if ret then
+			return true
+		end
+	end
+	return false
+end
+
+--可能性子检查
+function MjLogic:CheckProbabilitySub(splitedResult, info, level)
+	for _, v in pairs(splitedResult[level]) do
+		repeat
+			if info.eye and v.eye then
+				break
+			end
+
+			if info.guiNum < v.guiNum then
+				break
+			end
+
+			if level < info.count then
+				info.guiNum = info.guiNum - v.guiNum
+				local oldEye = info.eye
+				info.eye = oldEye or v.eye
+				if self:CheckProbabilitySub(splitedResult, info, level + 1) then
+					return true
+				end
+				info.eye = oldEye
+				info.guiNum = info.guiNum + v.guiNum
+				break
+			end
+
+			if not info.eye and not v.eye and info.guiNum < 2 then
+				break
+			end
+
+			return true
+		until(true)
+	end
+	return false
 end
 
 return MjLogic
